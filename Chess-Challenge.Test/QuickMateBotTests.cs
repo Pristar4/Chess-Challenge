@@ -17,7 +17,7 @@ public class QuickMateBotTests {
         var board = Board.CreateBoardFromFEN("5k2/8/8/4q3/8/3N4/PPP2r2/1KR5 w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot() {
-            MaxDepth = 3,
+            MaxDepth = 4,
         };
 
         // Act
@@ -33,7 +33,7 @@ public class QuickMateBotTests {
         var board = Board.CreateBoardFromFEN("8/3pR3/N1Nk4/1p3Pp1/5q2/6B1/1K6/7Q w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot {
-            MaxDepth = 3,
+            MaxDepth = 4,
         };
 
         // Act
@@ -49,7 +49,7 @@ public class QuickMateBotTests {
         var board = Board.CreateBoardFromFEN("8/3pR3/N1Nk4/1p3Pp1/5q2/6B1/1K6/7Q w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot {
-            MaxDepth = 5,
+            MaxDepth =6,
         };
 
         // Act
@@ -65,7 +65,7 @@ public class QuickMateBotTests {
              var board = Board.CreateBoardFromFEN("4k3/1Q6/2K5/8/8/8/8/8 b - - 0 1");
              var timer = new Timer(60 * 1000);
              var bot = new QuickMateBot() {
-                 MaxDepth = 3,
+                 MaxDepth = 4,
              };
 
              // Act
@@ -81,7 +81,7 @@ public class QuickMateBotTests {
              var board = Board.CreateBoardFromFEN("2k5/4b3/2KQ4/8/8/8/8/8 w - - 0 1");
              var timer = new Timer(60 * 1000);
              var bot = new QuickMateBot() {
-                 MaxDepth = 3,
+                 MaxDepth = 4,
              };
 
              // Act
@@ -118,7 +118,7 @@ public class QuickMateBotTests {
                         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot {
-            MaxDepth = 3,
+            MaxDepth = 4,
         };
 
         // Act

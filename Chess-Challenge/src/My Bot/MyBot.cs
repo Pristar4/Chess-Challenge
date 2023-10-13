@@ -10,8 +10,8 @@ using ChessChallenge.API;
 
 
 public class MyBot : IChessBot {
-    public int MaxDepth = 3;
-    private Stopwatch stopwatch = new Stopwatch();
+    public int MaxDepth = 4;
+    private Stopwatch _stopwatch = new();
     public long PositionsEvaluated { get; private set; }
     public int BestScore { get; private set; }
 
@@ -23,7 +23,7 @@ public class MyBot : IChessBot {
         var bestMove = Move.NullMove;
         int bestScore = int.MinValue;
 
-        stopwatch.Restart();
+        _stopwatch.Restart();
 
         foreach (var move in legalMoves) {
             // Mate in one
@@ -35,7 +35,7 @@ public class MyBot : IChessBot {
                 return move;
             }
 
-            int score = -NegaMax(board, MaxDepth, int.MinValue, int.MaxValue);
+            int score = -NegaMax(board, MaxDepth-1, int.MinValue, int.MaxValue);
             board.UndoMove(move);
 
             if (score > bestScore) {
@@ -44,9 +44,12 @@ public class MyBot : IChessBot {
             }
         }
 
-        stopwatch.Stop();
+        _stopwatch.Stop();
         Console.WriteLine(
-                $"Depth: {MaxDepth}, Time: {stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Positions: {PositionsEvaluated}");
+                $"MyBot:         Depth: {MaxDepth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove}");
+                // $"QuickmateBot:  Depth: {MaxDepth}, Time: {stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Positions: {PositionsEvaluated}");
+
+
         return bestMove;
     }
     private int AssessBoard(Board board) {
