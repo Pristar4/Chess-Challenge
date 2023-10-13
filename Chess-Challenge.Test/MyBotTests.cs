@@ -30,7 +30,7 @@ public class MyBotTests {
         var board = Board.CreateBoardFromFEN("8/3pR3/N1Nk4/1p3Pp1/5q2/6B1/1K6/7Q w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new MyBot {
-            MaxDepth = 3,
+            MaxDepth = 4,
         };
 
         // Act
@@ -47,7 +47,7 @@ public class MyBotTests {
         var board = Board.CreateBoardFromFEN("r7/5k1p/pppp1NpQ/4p2n/3P4/2P3Pq/Pr6/5RK1 w - - 3 27");
         var timer = new Timer(60 * 1000);
         var bot = new MyBot {
-            MaxDepth = 5,
+            MaxDepth = 6,
         };
 
         // Act

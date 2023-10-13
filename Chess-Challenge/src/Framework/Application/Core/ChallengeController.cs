@@ -8,6 +8,7 @@ using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Chess_Challenge.My_Bot;
 using static ChessChallenge.Application.Settings;
 using static ChessChallenge.Application.ConsoleHelper;
 
@@ -19,6 +20,7 @@ namespace ChessChallenge.Application
         {
             Human,
             MyBot,
+            QuickMateBot,
             EvilBot
         }
 
@@ -73,7 +75,7 @@ namespace ChessChallenge.Application
             botMatchStartFens = FileHelper.ReadResourceFile("Fens.txt").Split('\n').Where(fen => fen.Length > 0).ToArray();
             botTaskWaitHandle = new AutoResetEvent(false);
 
-            StartNewGame(PlayerType.Human, PlayerType.MyBot);
+            StartNewGame(PlayerType.Human, PlayerType.QuickMateBot);
         }
 
         public void StartNewGame(PlayerType whiteType, PlayerType blackType)
@@ -209,6 +211,7 @@ namespace ChessChallenge.Application
             return type switch
             {
                 PlayerType.MyBot => new ChessPlayer(new MyBot(), type, GameDurationMilliseconds),
+                PlayerType.QuickMateBot => new ChessPlayer(new QuickMateBot(), type, GameDurationMilliseconds),
                 PlayerType.EvilBot => new ChessPlayer(new EvilBot(), type, GameDurationMilliseconds),
                 _ => new ChessPlayer(new HumanPlayer(boardUI), type)
             };

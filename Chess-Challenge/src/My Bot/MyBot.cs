@@ -10,7 +10,7 @@ using ChessChallenge.API;
 
 
 public class MyBot : IChessBot {
-    public int MaxDepth = 5;
+    public int MaxDepth = 3;
     private Stopwatch stopwatch = new Stopwatch();
     public long PositionsEvaluated { get; private set; }
     public int BestScore { get; private set; }
@@ -18,22 +18,24 @@ public class MyBot : IChessBot {
     public Move Think(Board board, Timer timer) {
         PositionsEvaluated = 0;
         var legalMoves = board.GetLegalMoves();
-        // legalMoves = legalMoves.OrderBy(_ => Guid.NewGuid()).ToArray();
+        legalMoves = legalMoves.OrderBy(_ => Guid.NewGuid()).ToArray();
 
         var bestMove = Move.NullMove;
         int bestScore = int.MinValue;
 
         stopwatch.Restart();
+
         foreach (var move in legalMoves) {
             // Mate in one
             board.MakeMove(move);
 
             if (board.IsInCheckmate()) {
+                Console.WriteLine("Raw  Checkmate in 1");
                 board.UndoMove(move);
                 return move;
             }
 
-            int score = Minimax(board, MaxDepth, int.MinValue, int.MaxValue, false);
+            int score = -NegaMax(board, MaxDepth, int.MinValue, int.MaxValue);
             board.UndoMove(move);
 
             if (score > bestScore) {
@@ -43,13 +45,17 @@ public class MyBot : IChessBot {
         }
 
         stopwatch.Stop();
-        Console.WriteLine($"Depth: {MaxDepth}, Time: {stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Positions: {PositionsEvaluated}");
+        Console.WriteLine(
+                $"Depth: {MaxDepth}, Time: {stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Positions: {PositionsEvaluated}");
         return bestMove;
     }
     private int AssessBoard(Board board) {
         int score = 0;
         var allPieces = board.GetAllPieceLists();
-
+        // if checkmate, return max score
+        if (board.IsInCheckmate()) {
+            return int.MaxValue;
+        }
         foreach (var pieceList in allPieces) {
             foreach (var piece in pieceList) {
                 int pieceScore = GetScore(piece.PieceType);
@@ -72,13 +78,15 @@ public class MyBot : IChessBot {
             PieceType.Bishop => 300,
             PieceType.Rook => 500,
             PieceType.Queen => 900,
-            PieceType.King => 10000, // Some large number
+            PieceType.King => int.MaxValue / 2,
             _ => 0,
         };
     }
 
-    private int Minimax(Board board, int depth, int alpha, int beta, bool maximizingPlayer) {
-        if (depth == 0) {
+    private int NegaMax(Board board, int depth, int alpha, int beta ) {
+        if (depth == 0 || board.IsInCheckmate() || board.IsInStalemate()) {
+            if (board.IsInCheckmate()) {
+            }
             PositionsEvaluated++;
             return AssessBoard(board);
         }
@@ -86,46 +94,27 @@ public class MyBot : IChessBot {
         var moves = board.GetLegalMoves();
         // Console.WriteLine("Moves: {moves}");
 
-        // moves = OrderMoves(moves, board);
+        moves = OrderMoves(moves, board);
         // Console.WriteLine($"Ordered moves: {moves}");
 
-        if (maximizingPlayer) {
-            int maxEvaluation = int.MinValue;
-
-            foreach (var move in moves) {
-                board.MakeMove(move);
-                int evaluation = Minimax(board, depth - 1, alpha, beta, false);
-                board.UndoMove(move);
-
-                maxEvaluation = Math.Max(maxEvaluation, evaluation);
-                alpha = Math.Max(alpha, evaluation);
-
-                if (alpha >= beta) {
-                    break;
-                }
-            }
-
-            return maxEvaluation;
-        }
-
-        int minEvaluation = int.MaxValue;
+        int score = int.MinValue;
 
         foreach (var move in moves) {
             board.MakeMove(move);
-            int evaluation = Minimax(board, depth - 1, alpha, beta, true);
+            score = Math.Max(score, -NegaMax(board, depth - 1, -beta, -alpha));
             board.UndoMove(move);
 
-            minEvaluation = Math.Min(minEvaluation, evaluation);
-            beta = Math.Min(beta, evaluation);
+            alpha = Math.Max(alpha, score);
 
             if (alpha >= beta) {
                 break;
             }
         }
 
-        return minEvaluation;
+        return score;
     }
-    private static readonly Random rng = new Random(); // used to randomly order moves of equal value
+    private static readonly Random
+            rng = new Random(); // used to randomly order moves of equal value
 
     private Move[] OrderMoves(IEnumerable<Move> moves, Board board) {
         var movesWithScore = moves.Select(move => new {move, score = ScoreMove(move, board)});
@@ -145,7 +134,7 @@ public class MyBot : IChessBot {
             score += 2000;
         }
 
-        score += rng.Next(10);
+        // score += rng.Next(10);
 
         board.UndoMove(move);
 

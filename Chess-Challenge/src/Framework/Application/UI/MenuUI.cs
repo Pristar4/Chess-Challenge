@@ -9,25 +9,29 @@ namespace ChessChallenge.Application
     {
         public static void DrawButtons(ChallengeController controller)
         {
-            Vector2 buttonPos = UIHelper.Scale(new Vector2(260, 210));
-            Vector2 buttonSize = UIHelper.Scale(new Vector2(260, 55));
+            Vector2 buttonPos = UIHelper.Scale(new Vector2(300, 210));
+            Vector2 buttonSize = UIHelper.Scale(new Vector2(300, 55));
             float spacing = buttonSize.Y * 1.2f;
             float breakSpacing = spacing * 0.6f;
 
             // Game Buttons
-            if (NextButtonInRow("Human vs MyBot", ref buttonPos, spacing, buttonSize))
+            if (NextButtonInRow("Human vs QuickMateBot", ref buttonPos, spacing, buttonSize))
             {
-                var whiteType = controller.HumanWasWhiteLastGame ? ChallengeController.PlayerType.MyBot : ChallengeController.PlayerType.Human;
-                var blackType = !controller.HumanWasWhiteLastGame ? ChallengeController.PlayerType.MyBot : ChallengeController.PlayerType.Human;
+                var whiteType = controller.HumanWasWhiteLastGame ? ChallengeController.PlayerType.QuickMateBot : ChallengeController.PlayerType.Human;
+                var blackType = !controller.HumanWasWhiteLastGame ? ChallengeController.PlayerType.QuickMateBot : ChallengeController.PlayerType.Human;
                 controller.StartNewGame(whiteType, blackType);
             }
-            if (NextButtonInRow("MyBot vs MyBot", ref buttonPos, spacing, buttonSize))
+            if (NextButtonInRow("MyBot vs MyBotV2", ref buttonPos, spacing, buttonSize))
             {
-                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.MyBot);
+                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.QuickMateBot);
             }
             if (NextButtonInRow("MyBot vs EvilBot", ref buttonPos, spacing, buttonSize))
             {
                 controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.EvilBot);
+            }
+            if (NextButtonInRow("MyBotV2 vs EvilBot", ref buttonPos, spacing, buttonSize))
+            {
+                controller.StartNewBotMatch(ChallengeController.PlayerType.QuickMateBot, ChallengeController.PlayerType.EvilBot);
             }
 
             // Page buttons
