@@ -13,13 +13,13 @@ namespace Chess_Challenge.My_Bot;
 public class QuickMateBot : IChessBot {
     private readonly bool _printNodeCount = false;
     private readonly bool _printMoves = false;
-        private const int MAX_PIECE_SCORE = 100000;
+    private const int MAX_PIECE_SCORE = 100000;
     private readonly Stopwatch _stopwatch = new();
-        private int _localNodeCount;
-        private int _pruningCount;
+    private int _localNodeCount;
+    private int _pruningCount;
 
-        public int MaxDepth { get; set; } = 4;
-        public Dictionary<Move, int> MoveCounts { get; set; } = new();
+    public int MaxDepth { get; set; } = 5;
+    public Dictionary<Move, int> MoveCounts { get; set; } = new();
 
     public int NodeCount { get; private set; }
     public int BestScore => 0;
@@ -37,6 +37,7 @@ public class QuickMateBot : IChessBot {
             _localNodeCount = 0;
             // Mate in one
             board.MakeMove(move);
+
             if (board.IsInCheckmate()) {
                 Console.WriteLine("Raw  Checkmate in 1");
                 board.UndoMove(move);
@@ -44,7 +45,7 @@ public class QuickMateBot : IChessBot {
             }
 
 
-            int score = -NegaMax(board, MaxDepth-1, int.MinValue, int.MaxValue);
+            int score = -NegaMax(board, MaxDepth - 1, int.MinValue, int.MaxValue);
             board.UndoMove(move);
             // nodeCount += localnodes;
 
@@ -53,8 +54,7 @@ public class QuickMateBot : IChessBot {
                 NodeCount += _localNodeCount;
             }
 
-            if (score > bestScore)
-            {
+            if (score > bestScore) {
                 bestScore = score;
                 bestMove = move;
             }
@@ -76,6 +76,7 @@ public class QuickMateBot : IChessBot {
         int score = 0;
         var allPieces = board.GetAllPieceLists();
         int who2Move;
+
         if (board.IsWhiteToMove) {
             who2Move = 1;
         } else {
@@ -84,7 +85,6 @@ public class QuickMateBot : IChessBot {
 
         if (board.IsInCheckmate()) {
             return who2Move * (MAX_PIECE_SCORE + depth);
-              
         }
 
         foreach (var pieceList in allPieces) {
@@ -115,13 +115,14 @@ public class QuickMateBot : IChessBot {
     }
 
     private int NegaMax(Board board, int depth, int alpha, int beta) {
-        if (depth == 0 || board.IsInCheckmate() || board.IsInStalemate()) {
-            if (board.IsInCheckmate()) {
-
-
-            }
+        if (board.IsInCheckmate() || board.IsInStalemate()) {
             _localNodeCount++;
             return Evaluate(board, depth);
+        }
+
+        if (depth == 0) {
+            _localNodeCount++;
+            return QuiescenceSearch(board, alpha, beta);
         }
 
 
@@ -181,7 +182,7 @@ public class QuickMateBot : IChessBot {
         int score = 0;
 
         if (move.IsCapture) {
-            score += GetScore(move.CapturePieceType)* 100;
+            score += GetScore(move.CapturePieceType) * 100;
         }
 
         if (isInCheck) {
@@ -191,8 +192,54 @@ public class QuickMateBot : IChessBot {
         if (isInCheckmate) {
             score += 100000;
         }
+
         board.UndoMove(move);
 
         return score;
+    }
+
+    private int QuiescenceSearch(Board board, int alpha, int beta) {
+        int standPat = Evaluate(board, 0);
+
+        if (standPat >= beta) {
+            return beta;
+        }
+
+        if (alpha < standPat) {
+            alpha = standPat;
+        }
+
+        int score = standPat;
+
+        // consider only non-quiet moves (captures, checks)
+        // var moves = board.GetLegalMoves().Where(m => m.IsCapture || board.IsInCheck()).ToArray();
+        var moves = board.GetLegalMoves();
+
+
+        foreach (var move in moves) {
+            board.MakeMove(move);
+            bool isCheck = board.IsInCheck();
+            bool isCapture = move.IsCapture;
+            board.UndoMove(move);
+
+            if (!isCapture && !isCheck) {
+                continue;
+            }
+
+            board.MakeMove(move);
+            score = -QuiescenceSearch(board, -beta, -alpha);
+            board.UndoMove(move);
+
+
+            if (score >= beta) {
+                return beta;
+            }
+
+            if (score > alpha) {
+                alpha = score;
+            }
+        }
+
+        return alpha;
     }
 }

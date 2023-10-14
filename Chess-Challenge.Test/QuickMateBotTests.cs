@@ -12,12 +12,28 @@ using Timer = ChessChallenge.API.Timer;
 
 public class QuickMateBotTests {
     [Fact]
-    public void TestCaptureHighestValuePiece() {
+    public void TestCaptureHighestValuePieceDepthFive() {
         // Arrange
         var board = Board.CreateBoardFromFEN("5k2/8/8/4q3/8/3N4/PPP2r2/1KR5 w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot() {
-            MaxDepth = 4,
+            MaxDepth = 5,
+        };
+
+        // Act
+        var move = bot.Think(board, timer);
+
+        // Assert
+        var expectedMove = new Move("d3e5", board);
+        Assert.Equal(expectedMove, move);
+    }
+    [Fact]
+    public void TestCaptureHighestValuePieceDepthTwo() {
+        // Arrange
+        var board = Board.CreateBoardFromFEN("5k2/8/8/4q3/8/3N4/PPP2r2/1KR5 w - - 0 1");
+        var timer = new Timer(60 * 1000);
+        var bot = new QuickMateBot() {
+            MaxDepth = 5,
         };
 
         // Act
@@ -33,7 +49,7 @@ public class QuickMateBotTests {
         var board = Board.CreateBoardFromFEN("8/3pR3/N1Nk4/1p3Pp1/5q2/6B1/1K6/7Q w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot {
-            MaxDepth = 4,
+            MaxDepth =3,
         };
 
         // Act
@@ -49,7 +65,7 @@ public class QuickMateBotTests {
         var board = Board.CreateBoardFromFEN("8/3pR3/N1Nk4/1p3Pp1/5q2/6B1/1K6/7Q w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot {
-            MaxDepth =6,
+            MaxDepth =5,
         };
 
         // Act
