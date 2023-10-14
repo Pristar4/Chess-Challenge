@@ -14,8 +14,6 @@ using CsvHelper;
 namespace Chess_Challenge.My_Bot;
 
 public class QuickMateBot : IChessBot {
-    private bool TryToWin = false;
-
     private readonly bool _printNodeCount = true;
     private readonly bool _printMoves = true;
     private readonly bool _saveNodes = false;
@@ -27,7 +25,7 @@ public class QuickMateBot : IChessBot {
     public List<TreeNodeInfo> NodesData { get; } = new();
 
 
-    public int MaxDepth { get; set; } =4;
+    public int MaxDepth { get; set; } =8;
     public Dictionary<Move, int> MoveCounts { get; set; } = new();
 
     public int NodeCount { get; private set; }
@@ -57,7 +55,6 @@ public class QuickMateBot : IChessBot {
         var minTimeForCurrentMove = 0.05 * totalTime;
         _stopwatch.Restart();
 
-
         int ev_sign = 1; //assuming bot is maximizing
 
         // var depth = 1;
@@ -81,13 +78,14 @@ public class QuickMateBot : IChessBot {
                 board.MakeMove(move);
 
                 if (board.IsInCheckmate()) {
+
                     Console.WriteLine("Raw  Checkmate in 1");
                     board.UndoMove(move);
                     return move;
                 }
 
 
-                int score =  -NegaMax(board, MaxDepth-1,1, int.MinValue, int.MaxValue,-ev_sign,move);
+                int score =  -NegaMax(board, MaxDepth-1,0, int.MinValue, int.MaxValue,-ev_sign,move);
                 board.UndoMove(move);
                 // nodeCount += localnodes;
 
@@ -147,7 +145,8 @@ public class QuickMateBot : IChessBot {
         }
 
         if (board.IsInCheckmate()) {
-            return MATE_SCORE + ply;
+            // Console.WriteLine("Mate in " + ply);
+            return MATE_SCORE - ply;
         }
 
         foreach (var pieceList in allPieces) {
@@ -198,7 +197,7 @@ public class QuickMateBot : IChessBot {
     private int NegaMax(Board board, int depth, int ply , int alpha, int beta,int ev_sign, Move prevMove) {
         if (board.IsInCheckmate() || board.IsInStalemate()) {
             _localNodeCount++;
-                return ev_sign * (Evaluate(board, ply));
+                return   -(Evaluate(board, ply));
 
         }
 
@@ -206,7 +205,7 @@ public class QuickMateBot : IChessBot {
             _localNodeCount++;
             //TODO: Check why  using QuiescenceSearch at depth 4 breaks the bot
             // return QuiescenceSearch(board, alpha, beta);
-            return ev_sign * Evaluate(board, ply);
+             return  ev_sign *Evaluate(board, ply);
         }
 
 
@@ -217,7 +216,6 @@ public class QuickMateBot : IChessBot {
         int moveCount = moves.Length;
         int processedMoves = 0;
         // nodeCount += moves.Length;
-        // moves = OrderMoves(moves, board);
 
         foreach (var move in moves) {
             board.MakeMove(move);
