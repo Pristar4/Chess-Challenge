@@ -11,20 +11,24 @@ using ChessChallenge.API;
 namespace Chess_Challenge.My_Bot;
 
 public class QuickMateBot : IChessBot {
-    private readonly bool _printNodeCount = false;
-    private readonly bool _printMoves = false;
-    private const int MAX_PIECE_SCORE = 100000;
+    private readonly bool _printNodeCount = true;
+    private readonly bool _printMoves = true;
+    private const int MATE_SCORE = 100000;
     private readonly Stopwatch _stopwatch = new();
     private int _localNodeCount;
     private int _pruningCount;
 
-    public int MaxDepth { get; set; } = 5;
+    public int MaxDepth { get; set; } = 4;
     public Dictionary<Move, int> MoveCounts { get; set; } = new();
 
     public int NodeCount { get; private set; }
     public int BestScore => 0;
 
+    //Transposition table
+    private Dictionary<ulong,int> transpositionTable = new();
+
     public Move Think(Board board, Timer timer) {
+        transpositionTable.Clear();
         var legalMoves = board.GetLegalMoves();
         legalMoves = legalMoves.OrderBy(_ => Guid.NewGuid()).ToArray();
 
@@ -77,6 +81,14 @@ public class QuickMateBot : IChessBot {
         var allPieces = board.GetAllPieceLists();
         int who2Move;
 
+        ulong key = board.ZobristKey;
+
+        // Check if this position has been evaluated before
+        if (transpositionTable.TryGetValue(key, out  score)) {
+            // if we have, return the stored evaluation.
+            return score;
+        }
+
         if (board.IsWhiteToMove) {
             who2Move = 1;
         } else {
@@ -84,7 +96,7 @@ public class QuickMateBot : IChessBot {
         }
 
         if (board.IsInCheckmate()) {
-            return who2Move * (MAX_PIECE_SCORE + depth);
+            return who2Move * (MATE_SCORE + depth);
         }
 
         foreach (var pieceList in allPieces) {
@@ -98,7 +110,7 @@ public class QuickMateBot : IChessBot {
                 }
             }
         }
-
+        transpositionTable[key] = score;
         return score;
     }
 
@@ -123,6 +135,7 @@ public class QuickMateBot : IChessBot {
         if (depth == 0) {
             _localNodeCount++;
             return QuiescenceSearch(board, alpha, beta);
+            return Evaluate(board, depth);
         }
 
 

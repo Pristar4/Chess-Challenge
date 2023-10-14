@@ -60,6 +60,23 @@ public class QuickMateBotTests {
         Assert.Equal(expectedMove, move);
     }
     [Fact]
+    public void TestDefendCheckmateInTwo() {
+        // Arrange
+        var board = Board.CreateBoardFromFEN("rnbqk2r/ppp2ppp/5b2/3pp3/7P/P4P2/1PPPP3/RNBQKBNR w KQkq - 0 7");
+        var timer = new Timer(60 * 1000);
+        var bot = new QuickMateBot {
+            MaxDepth =5,
+        };
+
+        // Act
+        var move = bot.Think(board, timer);
+
+        // Assert
+        var notExpectedMove = new Move("h4h5", board);
+        Assert.NotEqual(notExpectedMove, move);
+    }
+
+    [Fact]
     public void TestCheckmateInTwoDepthFive() {
         // Arrange
         var board = Board.CreateBoardFromFEN("8/3pR3/N1Nk4/1p3Pp1/5q2/6B1/1K6/7Q w - - 0 1");
