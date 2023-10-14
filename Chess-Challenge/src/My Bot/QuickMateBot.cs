@@ -44,17 +44,17 @@ public class QuickMateBot : IChessBot {
         var minTimeForCurrentMove = 0.05 * totalTime;
         _stopwatch.Restart();
 
-        var depth = 1;
+        // var depth = 1;
 
-        // Iterative deepening
+        /*// Iterative deepening
         while (true) {
 
-            // if( /* time since the start of the Think method call is more than minTimeForMove */ )
+            // if( /* time since the start of the Think method call is more than minTimeForMove #1# )
             if (timer.MillisecondsElapsedThisTurn > minTimeForCurrentMove)
             {
                 Console.WriteLine("Time OVER ");
                 break;
-            }
+            }*/
 
             //print time to use in seconds
 
@@ -71,7 +71,7 @@ public class QuickMateBot : IChessBot {
                 }
 
 
-                int score = -NegaMax(board, depth-1, int.MinValue, int.MaxValue);
+                int score = -NegaMax(board, MaxDepth-1, int.MinValue, int.MaxValue);
                 board.UndoMove(move);
                 // nodeCount += localnodes;
 
@@ -94,16 +94,16 @@ public class QuickMateBot : IChessBot {
             if (_printNodeCount) PrintNodes();
 
             Console.WriteLine(
-                    $"QuickMateBot:  Depth: {depth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Nodes: {NodeCount}");
+                    $"QuickMateBot:  Depth: {MaxDepth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Nodes: {NodeCount}");
 
-            if (_stopwatch.ElapsedMilliseconds >= minTimeForCurrentMove) {
+            /*if (_stopwatch.ElapsedMilliseconds >= minTimeForCurrentMove) {
                 _stopwatch.Stop();
                 Console.WriteLine("Time limit reached");
 
                 return bestMove;
             }
             depth++;
-        }
+        }*/
 
         _stopwatch.Stop();
         return bestMove;
