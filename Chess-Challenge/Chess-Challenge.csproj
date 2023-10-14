@@ -51,6 +51,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="obj\" />
     <Folder Include="src\Framework\Chess\" />
   </ItemGroup>
 

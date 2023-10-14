@@ -12,12 +12,12 @@ using Timer = ChessChallenge.API.Timer;
 
 public class QuickMateBotTests {
     [Fact]
-    public void TestCaptureHighestValuePieceDepthFive() {
+    public void TestCaptureHighestValuePieceDepthFour() {
         // Arrange
         var board = Board.CreateBoardFromFEN("5k2/8/8/4q3/8/3N4/PPP2r2/1KR5 w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot() {
-            MaxDepth = 5,
+            MaxDepth = 4,
         };
 
         // Act
@@ -33,7 +33,7 @@ public class QuickMateBotTests {
         var board = Board.CreateBoardFromFEN("5k2/8/8/4q3/8/3N4/PPP2r2/1KR5 w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot() {
-            MaxDepth = 5,
+            MaxDepth = 2,
         };
 
         // Act
@@ -43,14 +43,30 @@ public class QuickMateBotTests {
         var expectedMove = new Move("d3e5", board);
         Assert.Equal(expectedMove, move);
     }
-
     [Fact]
     public void TestCheckmateInTwo() {
+        // Arrange
+        var board = Board.CreateBoardFromFEN("4k3/1p1NpN2/3R1R2/3K1P2/3PQ3/8/8/8 w - - 0 1");
+        var timer = new Timer(60 * 1000);
+        var bot = new QuickMateBot {
+            MaxDepth =8,
+        };
+
+        // Act
+        var move = bot.Think(board, timer);
+
+        // Assert
+        var expectedMove = new Move("d5e6", board);
+        Assert.Equal(expectedMove, move);
+    }
+
+    [Fact]
+    public void TestCheckmateInTwoNr2() {
         // Arrange
         var board = Board.CreateBoardFromFEN("8/3pR3/N1Nk4/1p3Pp1/5q2/6B1/1K6/7Q w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot {
-            MaxDepth =3,
+            MaxDepth =4,
         };
 
         // Act
@@ -58,6 +74,22 @@ public class QuickMateBotTests {
 
         // Assert
         var expectedMove = new Move("e7e4", board);
+        Assert.Equal(expectedMove, move);
+    }
+    [Fact]
+    public void TestCheckmateInFour() {
+        // Arrange
+        var board = Board.CreateBoardFromFEN("7Q/8/8/4K1k1/7r/8/8/8 w - - 0 1");
+        var timer = new Timer(60 * 1000);
+        var bot = new QuickMateBot {
+            MaxDepth =4,
+        };
+
+        // Act
+        var move = bot.Think(board, timer);
+
+        // Assert
+        var expectedMove = new Move("h8g7", board);
         Assert.Equal(expectedMove, move);
     }
     [Fact]
@@ -99,7 +131,7 @@ public class QuickMateBotTests {
         var board = Board.CreateBoardFromFEN("8/3pR3/N1Nk4/1p3Pp1/5q2/6B1/1K6/7Q w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot {
-            MaxDepth =5,
+            MaxDepth =4,
         };
 
         // Act
@@ -142,12 +174,28 @@ public class QuickMateBotTests {
              Assert.Equal(expectedMove, move);
          }
          [Fact]
+         public void TestAvoidWhiteCheckmateInOneDepthFour() {
+             // Arrange
+             var board = Board.CreateBoardFromFEN("4K3/1q6/2k5/8/8/8/8/8 w - - 0 1");
+             var timer = new Timer(60 * 1000);
+             var bot = new QuickMateBot() {
+                 MaxDepth =4,
+             };
+
+             // Act
+             var move = bot.Think(board, timer);
+
+             // Assert
+             var expectedMove = new Move("e8f8", board);
+             Assert.Equal(expectedMove, move);
+         }
+         [Fact]
          public void TestCheckmateInOneInsteadOfInTwo() {
              // Arrange
              var board = Board.CreateBoardFromFEN("2k5/4b3/2KQ4/8/8/8/8/8 w - - 0 1");
              var timer = new Timer(60 * 1000);
              var bot = new QuickMateBot() {
-                 MaxDepth = 4,
+                 MaxDepth = 2,
              };
 
              // Act
@@ -165,7 +213,7 @@ public class QuickMateBotTests {
         var board = Board.CreateBoardFromFEN("r7/5k1p/pppp1NpQ/4p2n/3P4/2P3Pq/Pr6/5RK1 w - - 3 27");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot {
-            MaxDepth = 6,
+            MaxDepth = 7,
         };
 
         // Act
