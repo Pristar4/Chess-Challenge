@@ -11,21 +11,22 @@ using ChessChallenge.API;
 namespace Chess_Challenge.My_Bot;
 
 public class QuickMateBot : IChessBot {
-    private readonly bool _printNodeCount = true;
+    private readonly bool _printNodeCount = false;
     private readonly bool _printMoves = true;
     private const int MATE_SCORE = 100000;
     private readonly Stopwatch _stopwatch = new();
     private int _localNodeCount;
     private int _pruningCount;
 
-    public int MaxDepth { get; set; } = 4;
+
+    public int MaxDepth { get; set; } = 8;
     public Dictionary<Move, int> MoveCounts { get; set; } = new();
 
     public int NodeCount { get; private set; }
     public int BestScore => 0;
 
     //Transposition table
-    private Dictionary<ulong,int> transpositionTable = new();
+    private Dictionary<ulong, int> transpositionTable = new();
 
     public Move Think(Board board, Timer timer) {
         transpositionTable.Clear();
@@ -34,46 +35,77 @@ public class QuickMateBot : IChessBot {
 
         var bestMove = Move.NullMove;
         int bestScore = int.MinValue;
-
+        var timeBuffer = 500;
+        var totalTime = timer.MillisecondsRemaining;
+        var increment = timer.IncrementMilliseconds;
+        double averageTimePerMove = (totalTime - timeBuffer) / 40.0 + increment;
+        var mainTimeForCurrentMove = averageTimePerMove + 0.1 * (totalTime - timeBuffer);
+        var maxTimeForMove = averageTimePerMove + 1.0 * (totalTime - timeBuffer);
+        var minTimeForCurrentMove = 0.05 * totalTime;
         _stopwatch.Restart();
 
-        foreach (var move in legalMoves) {
-            _localNodeCount = 0;
-            // Mate in one
-            board.MakeMove(move);
+        var depth = 1;
 
-            if (board.IsInCheckmate()) {
-                Console.WriteLine("Raw  Checkmate in 1");
+        // Iterative deepening
+        while (true) {
+
+            // if( /* time since the start of the Think method call is more than minTimeForMove */ )
+            if (timer.MillisecondsElapsedThisTurn > minTimeForCurrentMove)
+            {
+                Console.WriteLine("Time OVER ");
+                break;
+            }
+
+            //print time to use in seconds
+
+            Console.WriteLine($"time to Use: {minTimeForCurrentMove / 1000.0} seconds");
+            foreach (var move in legalMoves) {
+                _localNodeCount = 0;
+                // Mate in one
+                board.MakeMove(move);
+
+                if (board.IsInCheckmate()) {
+                    Console.WriteLine("Raw  Checkmate in 1");
+                    board.UndoMove(move);
+                    return move;
+                }
+
+
+                int score = -NegaMax(board, depth-1, int.MinValue, int.MaxValue);
                 board.UndoMove(move);
-                return move;
+                // nodeCount += localnodes;
+
+                if (!MoveCounts.ContainsKey(move)) {
+                    MoveCounts.Add(move, _localNodeCount);
+                    NodeCount += _localNodeCount;
+                }
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+
+                if (_printMoves) {
+                    var replace = move.ToString().Replace("\'", "").Replace("Move: ", "");
+                    Console.WriteLine($"Move: {replace}, Score: {score}");
+                }
             }
 
+            if (_printNodeCount) PrintNodes();
 
-            int score = -NegaMax(board, MaxDepth - 1, int.MinValue, int.MaxValue);
-            board.UndoMove(move);
-            // nodeCount += localnodes;
+            Console.WriteLine(
+                    $"QuickMateBot:  Depth: {depth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Nodes: {NodeCount}");
 
-            if (!MoveCounts.ContainsKey(move)) {
-                MoveCounts.Add(move, _localNodeCount);
-                NodeCount += _localNodeCount;
+            if (_stopwatch.ElapsedMilliseconds >= minTimeForCurrentMove) {
+                _stopwatch.Stop();
+                Console.WriteLine("Time limit reached");
+
+                return bestMove;
             }
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = move;
-            }
-
-            if (_printMoves) {
-                var replace = move.ToString().Replace("\'", "").Replace("Move: ", "");
-                Console.WriteLine($"Move: {replace}, Score: {score}");
-            }
+            depth++;
         }
 
         _stopwatch.Stop();
-        if (_printNodeCount) PrintNodes();
-
-        Console.WriteLine(
-                $"QuickMateBot:  Depth: {MaxDepth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Nodes: {NodeCount}");
         return bestMove;
     }
     private int Evaluate(Board board, int depth) {
@@ -84,7 +116,7 @@ public class QuickMateBot : IChessBot {
         ulong key = board.ZobristKey;
 
         // Check if this position has been evaluated before
-        if (transpositionTable.TryGetValue(key, out  score)) {
+        if (transpositionTable.TryGetValue(key, out score)) {
             // if we have, return the stored evaluation.
             return score;
         }
@@ -110,6 +142,7 @@ public class QuickMateBot : IChessBot {
                 }
             }
         }
+
         transpositionTable[key] = score;
         return score;
     }
@@ -134,7 +167,8 @@ public class QuickMateBot : IChessBot {
 
         if (depth == 0) {
             _localNodeCount++;
-            return QuiescenceSearch(board, alpha, beta);
+            //TODO: Check why  using QuiescenceSearch at depth 4 breaks the bot
+            // return QuiescenceSearch(board, alpha, beta);
             return Evaluate(board, depth);
         }
 
@@ -224,10 +258,7 @@ public class QuickMateBot : IChessBot {
 
         int score = standPat;
 
-        // consider only non-quiet moves (captures, checks)
-        // var moves = board.GetLegalMoves().Where(m => m.IsCapture || board.IsInCheck()).ToArray();
         var moves = board.GetLegalMoves();
-
 
         foreach (var move in moves) {
             board.MakeMove(move);
