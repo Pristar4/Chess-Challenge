@@ -14,7 +14,7 @@ using CsvHelper;
 namespace Chess_Challenge.My_Bot;
 
 public class QuickMateBot : IChessBot {
-    private readonly bool _printNodeCount = true;
+    private readonly bool _printNodeCount = false;
     private readonly bool _printMoves = true;
     private readonly bool _saveNodes = false;
     private const int MATE_SCORE = 100000;
@@ -22,25 +22,30 @@ public class QuickMateBot : IChessBot {
     private int _localNodeCount;
     private int _pruningCount;
 
+    private int leastPlyMate = int.MaxValue;
+    private int leastPlyMateScore = int.MaxValue;
     public List<TreeNodeInfo> NodesData { get; } = new();
 
 
-    public int MaxDepth { get; set; } =8;
+    public int MaxDepth { get; set; } = 6;
     public Dictionary<Move, int> MoveCounts { get; set; } = new();
 
     public int NodeCount { get; private set; }
     public int BestScore => 0;
 
+    private bool  isPlayerAWhite ;
+
     //Transposition table
-    private Dictionary<ulong, int> transpositionTable = new();
+    // private Dictionary<ulong, int> transpositionTable = new();
 
     public Move Think(Board board, Timer timer) {
-    if (_saveNodes) {
+        if (_saveNodes) {
             if (File.Exists("NodesData.csv")) {
                 File.Delete("NodesData.csv");
             }
         }
-        transpositionTable.Clear();
+
+        // transpositionTable.Clear();
         var legalMoves = board.GetLegalMoves();
         // legalMoves = legalMoves.OrderBy(_ => Guid.NewGuid()).ToArray();
 
@@ -53,6 +58,8 @@ public class QuickMateBot : IChessBot {
         var mainTimeForCurrentMove = averageTimePerMove + 0.1 * (totalTime - timeBuffer);
         var maxTimeForMove = averageTimePerMove + 1.0 * (totalTime - timeBuffer);
         var minTimeForCurrentMove = 0.05 * totalTime;
+        isPlayerAWhite = board.IsWhiteToMove;
+
         _stopwatch.Restart();
 
         int ev_sign = 1; //assuming bot is maximizing
@@ -69,55 +76,56 @@ public class QuickMateBot : IChessBot {
                 break;
             }*/
 
-            //print time to use in seconds
+        //print time to use in seconds
 
-            Console.WriteLine($"time to Use: {minTimeForCurrentMove / 1000.0} seconds");
-            foreach (var move in legalMoves) {
-                _localNodeCount = 0;
-                // Mate in one
-                board.MakeMove(move);
+        Console.WriteLine($"time to Use: {minTimeForCurrentMove / 1000.0} seconds");
 
-                if (board.IsInCheckmate()) {
+        foreach (var move in legalMoves) {
+            _localNodeCount = 0;
+            // Mate in one
+            board.MakeMove(move);
 
-                    Console.WriteLine("Raw  Checkmate in 1");
-                    board.UndoMove(move);
-                    return move;
-                }
-
-
-                int score =  -NegaMax(board, MaxDepth-1,0, int.MinValue, int.MaxValue,-ev_sign,move);
+            /*if (board.IsInCheckmate()) {
+                Console.WriteLine("Raw  Checkmate in 1");
                 board.UndoMove(move);
-                // nodeCount += localnodes;
+                return move;
+            }*/
 
-                if (!MoveCounts.ContainsKey(move)) {
-                    MoveCounts.Add(move, _localNodeCount);
-                    NodeCount += _localNodeCount;
-                }
 
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMove = move;
-                }
+            int score = -NegaMax(board, MaxDepth - 1, 1, int.MinValue, int.MaxValue, -ev_sign,
+                                 move);
+            board.UndoMove(move);
+            // nodeCount += localnodes;
 
-                if (_printMoves) {
-                    var replace = move.ToString().Replace("\'", "").Replace("Move: ", "");
-                    Console.WriteLine($"Move: {replace}, Score: {score}");
-                }
+            if (!MoveCounts.ContainsKey(move)) {
+                MoveCounts.Add(move, _localNodeCount);
+                NodeCount += _localNodeCount;
             }
 
-            if (_printNodeCount) PrintNodes();
-
-            Console.WriteLine(
-                    $"QuickMateBot:  Depth: {MaxDepth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Nodes: {NodeCount}");
-
-            /*if (_stopwatch.ElapsedMilliseconds >= minTimeForCurrentMove) {
-                _stopwatch.Stop();
-                Console.WriteLine("Time limit reached");
-
-                return bestMove;
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = move;
             }
-            depth++;
-        }*/
+
+            if (_printMoves) {
+                var replace = move.ToString().Replace("\'", "").Replace("Move: ", "");
+                Console.WriteLine($"Move: {replace}, Score: {score}");
+            }
+        }
+
+        if (_printNodeCount) PrintNodes();
+
+        Console.WriteLine(
+                $"QuickMateBot:  Depth: {MaxDepth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Nodes: {NodeCount}");
+
+        /*if (_stopwatch.ElapsedMilliseconds >= minTimeForCurrentMove) {
+            _stopwatch.Stop();
+            Console.WriteLine("Time limit reached");
+
+            return bestMove;
+        }
+        depth++;
+    }*/
 
         _stopwatch.Stop();
 
@@ -130,6 +138,7 @@ public class QuickMateBot : IChessBot {
             ExportTreeData("NodesData.csv");
             NodesData.Clear();
         }
+
         return bestMove;
     }
     private int Evaluate(Board board, int ply) {
@@ -139,15 +148,33 @@ public class QuickMateBot : IChessBot {
         ulong key = board.ZobristKey;
 
         // Check if this position has been evaluated before
-        if (transpositionTable.TryGetValue(key, out score)) {
-            // if we have, return the stored evaluation.
-            return score;
+        // if (transpositionTable.TryGetValue(key, out score)) {
+        // if we have, return the stored evaluation.
+        // return score;
+        // }
+        if (board.IsInCheckmate()) {
+            if (ply < leastPlyMate) {
+                leastPlyMate = ply;
+                int movesToMate = (ply + 1) / 2;
+                Console.WriteLine("Mate in " + movesToMate + " moves");
+            }
+            if (board.IsWhiteToMove)
+                return (isPlayerAWhite) ? -(MATE_SCORE - ply) : (MATE_SCORE - ply) ;
+            else {
+                return (isPlayerAWhite) ? (MATE_SCORE - ply) : -(MATE_SCORE - ply);
+            }
         }
 
+        /*
         if (board.IsInCheckmate()) {
-            // Console.WriteLine("Mate in " + ply);
-            return MATE_SCORE - ply;
-        }
+            if (board.IsWhiteToMove)
+                return -(MATE_SCORE - ply);
+            else {
+                return (MATE_SCORE - ply);
+            }
+        } else if (board.IsInStalemate()) {
+            return 0;
+        }*/
 
         foreach (var pieceList in allPieces) {
             foreach (var piece in pieceList) {
@@ -161,7 +188,7 @@ public class QuickMateBot : IChessBot {
             }
         }
 
-        transpositionTable[key] = score;
+        // transpositionTable[key] = score;
         return score;
     }
 
@@ -184,8 +211,8 @@ public class QuickMateBot : IChessBot {
     /// <param name="depth">
     /// depth ist die Maximaltiefe (in plies), die noch gesucht werden soll.
     /// </param>
-    /// <param name="ply">
-    /// ply ist die Anzahl der Halbzüge, die seit dem Start der Suche gemacht wurden.
+    /// <param name="rootDepth">
+    /// rootDepth ist die Anzahl der Halbzüge, die seit dem Start der Suche gemacht wurden.
     /// </param>
     /// <param name="alpha"></param>
     /// <param name="beta"></param>
@@ -194,18 +221,22 @@ public class QuickMateBot : IChessBot {
     /// </param>
     /// <param name="prevMove"></param>
     /// <returns></returns>
-    private int NegaMax(Board board, int depth, int ply , int alpha, int beta,int ev_sign, Move prevMove) {
-        if (board.IsInCheckmate() || board.IsInStalemate()) {
-            _localNodeCount++;
-                return   -(Evaluate(board, ply));
+    private int NegaMax(Board board, int depth, int rootDepth, int alpha, int beta, int ev_sign,
+                        Move prevMove) {
 
+        if (board.IsInCheckmate()) {
+            _localNodeCount++;
+            // ev_sign * Evaluate(board, rootDepth);
+            return  ev_sign *Evaluate(board, rootDepth);
+            //TODO: Check why  using QuiescenceSearch at depth 4 breaks the bot
+            // return QuiescenceSearch(board, alpha, beta);
         }
+
 
         if (depth == 0) {
             _localNodeCount++;
-            //TODO: Check why  using QuiescenceSearch at depth 4 breaks the bot
-            // return QuiescenceSearch(board, alpha, beta);
-             return  ev_sign *Evaluate(board, ply);
+
+            return ev_sign * Evaluate(board, rootDepth);
         }
 
 
@@ -221,28 +252,33 @@ public class QuickMateBot : IChessBot {
             board.MakeMove(move);
             processedMoves++;
 
-            int newValue = -NegaMax(board, depth - 1, ply + 1, -beta, -alpha, -ev_sign, move);
-             string moveString = move.ToString().Replace("Move: ", "").Replace("\'", "");
+            int newValue = -NegaMax(board, depth - 1, rootDepth + 1, -beta, -alpha, -ev_sign, move);
+            string moveString = move.ToString().Replace("Move: ", "").Replace("\'", "");
             string preMoveString = prevMove.ToString().Replace("Move: ", "").Replace("\'", "");
 
             if (_saveNodes) {
-            NodesData.Add(new TreeNodeInfo {
-                PrevMove = preMoveString,
-                Move = moveString,
-                Score = newValue,
-                Depth = depth,
-                Alpha = alpha,
-                Beta = beta,
-                Fen = board.GetFenString(),
-            });
+                NodesData.Add(new TreeNodeInfo {
+                    PrevMove = preMoveString,
+                    Move = moveString,
+                    Score = newValue,
+                    Depth = depth,
+                    Alpha = alpha,
+                    Beta = beta,
+                    Fen = board.GetFenString(),
+                });
             }
+
             board.UndoMove(move);
 
+
+            // Update the best local value
             positionValue = Math.Max(positionValue, newValue);
 
 
+            // Update alpha
             alpha = Math.Max(alpha, newValue);
 
+            // Beta cut-off
             if (alpha >= beta) {
                 _pruningCount += (moveCount - processedMoves);
                 break;
@@ -276,10 +312,12 @@ public class QuickMateBot : IChessBot {
         board.MakeMove(move);
         bool isInCheck = board.IsInCheck();
         bool isInCheckmate = board.IsInCheckmate();
+        bool moveIsCapture = move.IsCapture;
 
         int score = 0;
 
-        if (move.IsCapture) {
+
+        if (moveIsCapture) {
             score += GetScore(move.CapturePieceType) * 100;
         }
 
