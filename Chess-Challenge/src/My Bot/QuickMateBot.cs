@@ -27,7 +27,7 @@ public class QuickMateBot : IChessBot {
     public List<TreeNodeInfo> NodesData { get; } = new();
 
 
-    public int MaxDepth { get; set; } = 8;
+    public int MaxDepth { get; set; } =3;
     public Dictionary<Move, int> MoveCounts { get; set; } = new();
 
     public int NodeCount { get; private set; }
@@ -47,7 +47,7 @@ public class QuickMateBot : IChessBot {
 
         transpositionTable.Clear();
         var legalMoves = board.GetLegalMoves();
-        // legalMoves = legalMoves.OrderBy(_ => Guid.NewGuid()).ToArray();
+        legalMoves = legalMoves.OrderBy(_ => Guid.NewGuid()).ToArray();
 
         var bestMove = Move.NullMove;
         int bestScore = int.MinValue;
@@ -150,15 +150,15 @@ public class QuickMateBot : IChessBot {
 
         // Check if this position has been evaluated before
         if (transpositionTable.TryGetValue(key, out score)) {
-        // if we have, return the stored evaluation.
-        return score;
+            // if we have, return the stored evaluation.
+            return score;
         }
-        if (board.IsInCheckmate())
-        {
+
+        if (board.IsInCheckmate()) {
 
             if (ply < leastPlyMate) {
                 leastPlyMate = ply;
-                int movesToMate = (ply ) / 2;
+                int movesToMate = (ply+1) / 2;
                 //TODO: doesnt Print if the bot gets mated from the opponent
                 // example output for such a case is:
                 //  Move: e3e2, Score: -99994
@@ -167,10 +167,10 @@ public class QuickMateBot : IChessBot {
 
                 Console.WriteLine("Mate in " + movesToMate + " moves");
             }
+
             if (board.IsWhiteToMove) {
                 return (isPlayerAWhite) ? -(MATE_SCORE - ply) : (MATE_SCORE - ply);
-            }
-            else {
+            } else {
                 return (isPlayerAWhite) ? (MATE_SCORE - ply) : -(MATE_SCORE - ply);
             }
         } else {
@@ -196,16 +196,17 @@ public class QuickMateBot : IChessBot {
             foreach (var piece in pieceList) {
                 int pieceScore = GetScore(piece.PieceType);
 
-                if (piece.IsWhite == board.IsWhiteToMove) {
+                if (piece.IsWhite == isPlayerAWhite) {
                     score += pieceScore;
                 } else {
                     score -= pieceScore;
                 }
+
             }
         }
 
         transpositionTable[key] = score;
-        return score;
+            return score;
     }
 
     private int GetScore(PieceType pieceType) {
@@ -248,7 +249,7 @@ public class QuickMateBot : IChessBot {
         }
 
 
-        if (depth == 0) {
+        if (depth == 1) {
             _localNodeCount++;
 
             return ev_sign * Evaluate(board, rootDepth);

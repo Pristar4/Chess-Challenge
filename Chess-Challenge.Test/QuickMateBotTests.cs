@@ -165,7 +165,7 @@ public class QuickMateBotTests {
                 Board.CreateBoardFromFEN("8/8/2K5/4kP2/3N4/7Q/8/2R5 w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot {
-            MaxDepth = 12,
+            MaxDepth = 8,
         };
 
         // Act
@@ -243,6 +243,40 @@ public class QuickMateBotTests {
         var expectedMove = new Move("d6c7", board);
         Assert.Equal(expectedMove, move);
     }
+    [Fact]
+    public void TestDontBlunderPawn() {
+        // Arrange
+        var board = Board.CreateBoardFromFEN("8/2p5/8/1P6/8/8/8/2K4k w - - 0 1");
+        var timer = new Timer(60 * 1000);
+        var bot = new QuickMateBot() {
+            MaxDepth = 3,
+        };
+
+        // Act
+        var move = bot.Think(board, timer);
+
+        // Assert
+        var notExpectedMove = new Move("b5b6", board);
+        Assert.NotEqual(notExpectedMove, move);
+    }
+    [Fact]
+
+    public void TestDontBlunderPawn2() {
+        // Arrange
+        var board = Board.CreateBoardFromFEN("r1bq1rk1/pp3ppp/1nn1p3/8/1b1PN3/5N2/PP2BPPP/R1BQ1RK1 w - - 2 11");
+        var timer = new Timer(60 * 1000);
+        var bot = new QuickMateBot() {
+            MaxDepth = 3,
+        };
+
+        // Act
+        var move = bot.Think(board, timer);
+
+        // Assert
+        var notExpectedMove = new Move("d4d5", board);
+        Assert.NotEqual(notExpectedMove, move);
+    }
+
     [Fact]
     public void TestDefendCheckmateIn2() {
         // Arrange
