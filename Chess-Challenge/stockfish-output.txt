@@ -1,0 +1,10 @@
+﻿go depth 7
+info string NNUE evaluation using nn-0000000000a0.nnue
+info depth 1 seldepth 1 multipv 1 score cp 7 nodes 51 nps 51000 hashfull 0 tbhits 0 time 1 pv g8e7
+info depth 2 seldepth 2 multipv 1 score cp 7 nodes 85 nps 85000 hashfull 0 tbhits 0 time 1 pv g8e7 c7d7
+info depth 3 seldepth 3 multipv 1 score cp 7 nodes 114 nps 114000 hashfull 0 tbhits 0 time 1 pv g8e7 c7d7 b2c1 g1g2
+info depth 4 seldepth 4 multipv 1 score cp 7 nodes 157 nps 157000 hashfull 0 tbhits 0 time 1 pv g8e7 c7d7 b2c1 g1g2 c1a3
+info depth 5 seldepth 5 multipv 1 score cp 7 nodes 200 nps 200000 hashfull 0 tbhits 0 time 1 pv g8e7 c7d7 b2c1 g1g2 c1a3
+info depth 6 seldepth 6 multipv 1 score cp 49 nodes 303 nps 151500 hashfull 0 tbhits 0 time 2 pv b2a1 h2f1 g8e7 c7d7
+info depth 7 seldepth 6 multipv 1 score cp 40 nodes 401 nps 200500 hashfull 0 tbhits 0 time 2 pv b2a1 h2f1 g8e7 d3b5
+bestmove b2a1 ponder h2f1
