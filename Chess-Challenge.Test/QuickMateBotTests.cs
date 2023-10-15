@@ -165,7 +165,7 @@ public class QuickMateBotTests {
                 Board.CreateBoardFromFEN("8/8/2K5/4kP2/3N4/7Q/8/2R5 w - - 0 1");
         var timer = new Timer(60 * 1000);
         var bot = new QuickMateBot {
-            MaxDepth = 8,
+            MaxDepth = 12,
         };
 
         // Act

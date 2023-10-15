@@ -27,16 +27,16 @@ public class QuickMateBot : IChessBot {
     public List<TreeNodeInfo> NodesData { get; } = new();
 
 
-    public int MaxDepth { get; set; } = 6;
+    public int MaxDepth { get; set; } = 8;
     public Dictionary<Move, int> MoveCounts { get; set; } = new();
 
     public int NodeCount { get; private set; }
     public int BestScore => 0;
 
-    private bool  isPlayerAWhite ;
+    private bool isPlayerAWhite;
 
     //Transposition table
-    // private Dictionary<ulong, int> transpositionTable = new();
+    private Dictionary<ulong, int> transpositionTable = new();
 
     public Move Think(Board board, Timer timer) {
         if (_saveNodes) {
@@ -45,7 +45,7 @@ public class QuickMateBot : IChessBot {
             }
         }
 
-        // transpositionTable.Clear();
+        transpositionTable.Clear();
         var legalMoves = board.GetLegalMoves();
         // legalMoves = legalMoves.OrderBy(_ => Guid.NewGuid()).ToArray();
 
@@ -116,7 +116,7 @@ public class QuickMateBot : IChessBot {
         if (_printNodeCount) PrintNodes();
 
         Console.WriteLine(
-                $"QuickMateBot:  Depth: {MaxDepth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Nodes: {NodeCount}");
+                $"QuickMateBot:  Depth: {MaxDepth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Nodes: {NodeCount} NPS: {(NodeCount / (_stopwatch.ElapsedMilliseconds / 1000.0)).ToString("0.00")}");
 
         /*if (_stopwatch.ElapsedMilliseconds >= minTimeForCurrentMove) {
             _stopwatch.Stop();
@@ -139,6 +139,7 @@ public class QuickMateBot : IChessBot {
             NodesData.Clear();
         }
 
+        Console.WriteLine($"FiftyMoveCounter: {board.FiftyMoveCounter}");
         return bestMove;
     }
     private int Evaluate(Board board, int ply) {
@@ -148,24 +149,39 @@ public class QuickMateBot : IChessBot {
         ulong key = board.ZobristKey;
 
         // Check if this position has been evaluated before
-        // if (transpositionTable.TryGetValue(key, out score)) {
+        if (transpositionTable.TryGetValue(key, out score)) {
         // if we have, return the stored evaluation.
-        // return score;
-        // }
-        if (board.IsInCheckmate()) {
+        return score;
+        }
+        if (board.IsInCheckmate())
+        {
+
             if (ply < leastPlyMate) {
                 leastPlyMate = ply;
-                int movesToMate = (ply + 1) / 2;
+                int movesToMate = (ply ) / 2;
+                //TODO: doesnt Print if the bot gets mated from the opponent
+                // example output for such a case is:
+                //  Move: e3e2, Score: -99994
+                // Move: e3f2, Score: -99994
+                // Move: e3f4, Score: -99992
+
                 Console.WriteLine("Mate in " + movesToMate + " moves");
             }
-            if (board.IsWhiteToMove)
-                return (isPlayerAWhite) ? -(MATE_SCORE - ply) : (MATE_SCORE - ply) ;
+            if (board.IsWhiteToMove) {
+                return (isPlayerAWhite) ? -(MATE_SCORE - ply) : (MATE_SCORE - ply);
+            }
             else {
                 return (isPlayerAWhite) ? (MATE_SCORE - ply) : -(MATE_SCORE - ply);
             }
+        } else {
+            if (board.IsDraw()) {
+                return 0;
+            }
+
         }
 
         /*
+         OLD CODE
         if (board.IsInCheckmate()) {
             if (board.IsWhiteToMove)
                 return -(MATE_SCORE - ply);
@@ -188,7 +204,7 @@ public class QuickMateBot : IChessBot {
             }
         }
 
-        // transpositionTable[key] = score;
+        transpositionTable[key] = score;
         return score;
     }
 
@@ -223,11 +239,10 @@ public class QuickMateBot : IChessBot {
     /// <returns></returns>
     private int NegaMax(Board board, int depth, int rootDepth, int alpha, int beta, int ev_sign,
                         Move prevMove) {
-
         if (board.IsInCheckmate()) {
             _localNodeCount++;
             // ev_sign * Evaluate(board, rootDepth);
-            return  ev_sign *Evaluate(board, rootDepth);
+            return ev_sign * Evaluate(board, rootDepth);
             //TODO: Check why  using QuiescenceSearch at depth 4 breaks the bot
             // return QuiescenceSearch(board, alpha, beta);
         }
@@ -281,6 +296,9 @@ public class QuickMateBot : IChessBot {
             // Beta cut-off
             if (alpha >= beta) {
                 _pruningCount += (moveCount - processedMoves);
+                //TODO: Fix that Pruning prunes fastest mate sometimes
+                // maybe the problem is just the score of the mate ? i dont know yet
+
                 break;
             }
         }
