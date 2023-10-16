@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using ChessChallenge.API;
+using static System.Math;
 
 #endregion
 
@@ -14,7 +15,7 @@ namespace Chess_Challenge.My_Bot;
 
 #endregion
 
-public class MyBot : IChessBot {
+public class MyBotV2 : IChessBot {
     private const int MATE_SCORE = 100000;
 
     private const int MAX_SCORE = int.MaxValue;
@@ -25,7 +26,7 @@ public class MyBot : IChessBot {
     // WARNING: SAVING NODES DATA WILL SLOW DOWN THE BOT SIGNIFICANTLY
     // TODO : Maybe only save important nodes pv variation ?
     private readonly bool _enableTranspositionTable = true;
-    private readonly bool _printMoves = false;
+    private readonly bool _printMoves = true;
     private readonly bool _printNodeCount = false;
     private readonly Stopwatch _stopwatch = new();
     private int _localNodeCount;
@@ -42,7 +43,7 @@ public class MyBot : IChessBot {
     private readonly Dictionary<ulong, int> transpositionTable = new();
 
 
-    public int MaxDepth { get; set; } = 4;
+    public int MaxDepth { get; set; } = 8;
     public Dictionary<Move, int> MoveCounts { get; set; } = new();
 
     public int NodeCount { get; private set; }
@@ -54,37 +55,21 @@ public class MyBot : IChessBot {
     public Move Think(Board board, Timer timer) {
         transpositionTable.Clear();
         var legalMoves = board.GetLegalMoves();
-        // legalMoves = legalMoves.OrderBy(_ => Guid.NewGuid()).ToArray();
-
+        // Randomize so that we don't always pick the same move if they have the same score
+        legalMoves = legalMoves.OrderBy(_ => Guid.NewGuid()).ToArray();
         var bestMove = Move.NullMove;
         int bestScore = MIN_SCORE;
-        int timeBuffer = 500;
-        int totalTime = timer.MillisecondsRemaining;
-        int increment = timer.IncrementMilliseconds;
-        double averageTimePerMove = (totalTime - timeBuffer) / 40.0 + increment;
-        double mainTimeForCurrentMove = averageTimePerMove + 0.1 * (totalTime - timeBuffer);
-        double maxTimeForMove = averageTimePerMove + 1.0 * (totalTime - timeBuffer);
-        double minTimeForCurrentMove = 0.05 * totalTime;
         isPlayerAWhite = board.IsWhiteToMove;
 
         _stopwatch.Restart();
 
-        int ev_sign = 1; //assuming bot is maximizing
 
+        int ev_sign = 1; //assuming bot is maximizing
 
         foreach (var move in legalMoves) {
             _localNodeCount = 0;
-            // Mate in one
             board.MakeMove(move);
-
-            /*if (board.IsInCheckmate()) {
-                Console.WriteLine("Raw  Checkmate in 1");
-                board.UndoMove(move);
-                return move;
-            }*/
-
-            int score = -NegaMax(board, MaxDepth - 1, 1, MIN_SCORE, MAX_SCORE, -ev_sign,
-                                 move);
+            int score = -Search(board, MaxDepth - 1, 1, MIN_SCORE, MAX_SCORE, -ev_sign);
             board.UndoMove(move);
 
             if (!MoveCounts.ContainsKey(move)) {
@@ -99,7 +84,7 @@ public class MyBot : IChessBot {
 
             if (_printMoves) {
                 string replace = move.ToString().Replace("\'", "").Replace("Move: ", "");
-                Console.WriteLine($"Move: {replace}, Score: {score / 100}");
+                Console.WriteLine($"Move: {replace}, Score: {score}");
             }
         }
 
@@ -108,7 +93,7 @@ public class MyBot : IChessBot {
         // TODO : print in centipawns so that we can compare with stockfish
         // so the score of one pawn was 100 so print score/100
         Console.WriteLine(
-                $"MyBot:  Depth: {MaxDepth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore / 100}, Best Move:{bestMove} Nodes: {NodeCount} NPS: {(NodeCount / (_stopwatch.ElapsedMilliseconds / 1000.0)).ToString("0.00")}");
+                $"MyBotV2:  Depth: {MaxDepth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Nodes: {NodeCount} NPS: {(NodeCount / (_stopwatch.ElapsedMilliseconds / 1000.0)).ToString("0.00")}");
         double cacheHitRatio = (double)cacheHits / totalLookups;
         // TODO : print if the best move / bestscore  comes from a lookup;
 
@@ -132,18 +117,12 @@ public class MyBot : IChessBot {
         ulong key = board.ZobristKey;
         var allPieces = board.GetAllPieceLists();
 
-        // Check if this position has been evaluated before
         if (_enableTranspositionTable && transpositionTable.TryGetValue(key, out score)) {
             cacheHits++;
             return score;
         }
 
         if (board.IsInCheckmate()) {
-            if (ply < leastPlyMate) {
-                leastPlyMate = ply;
-                int movesToMate = ply / 2;
-                // Console.WriteLine("Mate in " + movesToMate + " moves");
-            }
             /*
             score = (isPlayerAWhite == board.IsWhiteToMove)
                     ? MATE_SCORE - (ply - 1)
@@ -215,56 +194,41 @@ public class MyBot : IChessBot {
     ///     ev_sign ist das Vorzeichen der Bewertungsfunktion (1 wenn der Bot maximiert, -1 wenn er
     ///     minimiert).
     /// </param>
-    /// <param name="prevMove"></param>
     /// <returns></returns>
-    private int NegaMax(Board board, int depth, int rootDepth, int alpha, int beta, int ev_sign,
-                        Move prevMove) {
+    private int Search(Board board, int depth, int rootDepth, int alpha, int beta, int ev_sign) {
+        if (depth == 0) {
+            _localNodeCount++;
+            // return ev_sign * Evaluate(board, rootDepth);
+            return QuiescenceSearch(board, alpha, beta, ev_sign);
+        }
+
         if (board.IsInCheckmate() || board.IsDraw()) {
             _localNodeCount++;
             return ev_sign * Evaluate(board, rootDepth);
         }
 
-
-        if (depth == 0) {
-            _localNodeCount++;
-
-            // Console.WriteLine($"alpha {alpha} beta {beta}");
-            return ev_sign * Evaluate(board, rootDepth);
-            // return ev_sign * -QuiescenceSearch(board, -beta, -alpha, -ev_sign);
-        }
-
-
-        int positionValue = -MAX_SCORE;
         var moves = board.GetLegalMoves();
-
+        int moveCount = moves.Length;
+        int processedMoves = 0;
 
         if (_enableMoveOrdering) {
             moves = OrderMoves(moves, board);
         }
 
-
-        int moveCount = moves.Length;
-        int processedMoves = 0;
-        // nodeCount += moves.Length;
+        int bestEvaluation = -MAX_SCORE;
 
         foreach (var move in moves) {
             board.MakeMove(move);
-            processedMoves++;
-
-            int newValue = -NegaMax(board, depth - 1, rootDepth + 1, -beta, -alpha, -ev_sign, move);
-            string moveString = move.ToString().Replace("Move: ", "").Replace("\'", "");
-            string preMoveString = prevMove.ToString().Replace("Move: ", "").Replace("\'", "");
-
-
+            ++processedMoves;
+            int evaluation = -Search(board, depth - 1, rootDepth + 1, -beta, -alpha, -ev_sign);
+            bestEvaluation = Max(evaluation, bestEvaluation);
             board.UndoMove(move);
 
+            if (evaluation >= beta) {
+                return beta;
+            }
 
-            // Update the best local value
-            positionValue = Math.Max(positionValue, newValue);
-
-
-            // Update alpha
-            alpha = Math.Max(alpha, newValue);
+            alpha = Max(alpha, evaluation);
 
             if (_enablePruning) { // Beta cut-off
                 if (alpha >= beta) {
@@ -274,7 +238,7 @@ public class MyBot : IChessBot {
             }
         }
 
-        return positionValue;
+        return bestEvaluation;
     }
 
     private Move[] OrderMoves(IEnumerable<Move> moves, Board board) {
@@ -298,23 +262,22 @@ public class MyBot : IChessBot {
     }
 
     private int QuiescenceSearch(Board board, int alpha, int beta, int ev_sign) {
-        //  if board.IsWhiteToMove && isPlayerAWhite = positive score
-        //  if board.IsWhiteToMove && !isPlayerAWhite = negative score
-        int stand_pat = Evaluate(board, 0);
+        //
+        int evaluation = ev_sign * Evaluate(board, 0);
 
-        if (stand_pat >= beta) {
+        if (evaluation >= beta) {
             return beta;
         }
 
-        if (alpha < stand_pat) {
-            alpha = stand_pat;
+        if (alpha < evaluation) {
+            alpha = evaluation;
         }
 
         var legalMoves = board.GetLegalMoves();
 
         foreach (var move in legalMoves) {
             if (move.IsCapture) {
-                int scoreAfterMove = stand_pat + GetScore(move.CapturePieceType) * 100;
+                int scoreAfterMove = evaluation + GetScore(move.CapturePieceType) * 100;
 
                 if (scoreAfterMove < alpha) {
                     break;
