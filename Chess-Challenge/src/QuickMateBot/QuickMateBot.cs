@@ -226,7 +226,7 @@ public class QuickMateBot : IChessBot {
         if (depth == 0) {
             _localNodeCount++;
 
-            return evSign * Evaluate(board, rootDepth);
+            return evSign * SearchAllCaptures(board,alpha,beta, rootDepth,evSign);
         }
         int positionValue = -MaxScore;
         var moves = board.GetLegalMoves().ToList();
@@ -264,5 +264,37 @@ public class QuickMateBot : IChessBot {
         }
 
         return positionValue;
+    }
+
+    private int SearchAllCaptures(Board board, int alpha, int beta, int rootDepth,int evSign) {
+        // Captures aren't typically forced, so see what the eval is before making a capture.
+        // Otherwise if only bad captures are available, the position will be evaluated as bad.
+        // even if good non-capture moves exist.
+        int eval = evSign * Evaluate(board, rootDepth);
+
+        if (eval >= beta) {
+            return beta;
+        }
+        alpha = Math.Max(alpha, eval);
+        var captureMoves = board.GetLegalMoves().Where(m => m.IsCapture);
+        if (_enableMoveOrdering) {
+            captureMoves = OrderMoves(captureMoves, board);
+        }
+
+        foreach (var captureMove in captureMoves) {
+            board.MakeMove(captureMove);
+            eval = -SearchAllCaptures(board, -beta, -alpha, rootDepth + 1,-evSign);
+            board.UndoMove(captureMove);
+
+            if (eval >= beta) {
+                return beta;
+            }
+            alpha = Math.Max(alpha, eval);
+
+        }
+
+        return alpha;
+
+
     }
 }
