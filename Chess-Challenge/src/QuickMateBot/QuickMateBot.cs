@@ -12,101 +12,45 @@ namespace Chess_Challenge.QuickMateBot;
 
 public class QuickMateBot : IChessBot {
     private const int MateScore = 100000;
-
     private const int MaxScore = int.MaxValue;
     // CAUTION: MIN_SCORE  Causes integer overflow when negating without +1 or use -int.MaxValue
     private const int MinScore = int.MinValue + 1;
     private readonly bool _enableMoveOrdering = true;
+    private readonly bool _enablePrintNodes = false;
     private readonly bool _enablePruning = true;
-    private readonly bool _enableTranspositionTable = false;
-    private readonly bool _printMoves = true;
-    private readonly bool _printNodeCount = true;
+    private readonly bool _printMoves = false;
     private readonly Stopwatch _stopwatch = new();
 
-    //Transposition table || Hash Table
-    private readonly Dictionary<ulong, int> _transpositionTable = new();
     private int _cacheHits;
-
     private bool _isPlayerAWhite;
     private int _localNodeCount;
     private int _pruningCount;
     private int _totalLookups;
+    // Time to use in milliseconds
+    private const int TimeToUse = 5000;
+    private bool _outOfTime;
+    private Move _bestPreviousMove = Move.NullMove;
+    private int _bestPreviousScore = -MaxScore;
 
 
-    public int MaxDepth { get; init; } = 4;
-    private Dictionary<Move, int> MoveCounts { get; } = new();
-
+    public int MaxDepth { get; init; } = 256;
     private int NodeCount { get; set; }
+    private Dictionary<Move, int> MoveCounts { get; } = new();
 
 
     public Move Think(Board board, Timer timer) {
-        _transpositionTable.Clear();
-        var legalMoves = board.GetLegalMoves();
-
-        var bestMove = Move.NullMove;
-        int bestScore = MinScore;
-        _isPlayerAWhite = board.IsWhiteToMove;
-
-        _stopwatch.Restart();
-
-        const int evSign = 1; //assuming bot is maximizing
-
-
-        foreach (var move in legalMoves) {
-            _localNodeCount = 0;
-            // Mate in one
-            board.MakeMove(move);
-
-            int score = -Search(board, MaxDepth - 1, 1, MinScore, MaxScore, -evSign);
-            board.UndoMove(move);
-
-            if (!MoveCounts.ContainsKey(move)) {
-                MoveCounts.Add(move, _localNodeCount);
-                NodeCount += _localNodeCount;
-            }
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = move;
-            }
-
-            if (_printMoves) {
-                string replace = move.ToString().Replace("\'", "").Replace("Move: ", "");
-                Console.WriteLine($"Move: {replace}, Score: {score}");
-            }
-        }
-
-        if (_printNodeCount) PrintNodes();
-
-        Console.WriteLine(
-                $"QuickMateBot:  Depth: {MaxDepth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Nodes: {NodeCount} NPS: {NodeCount / (_stopwatch.ElapsedMilliseconds / 1000.0):0.00}");
-        double cacheHitRatio = (double)_cacheHits / _totalLookups;
-        Console.WriteLine($"Cache Hit Ratio: {cacheHitRatio:0.00}%");
-
-
+        InitializeThink(board);
+        IdentifyBestMove(board, out var bestMove, out int bestScore);
+        PrintStatistics(bestScore, bestMove);
         _stopwatch.Stop();
-
         return bestMove;
     }
-    /// <summary>
-    /// </summary>
-    /// <param name="board"></param>
-    /// <param name="ply"></param>
-    /// <returns>
-    ///     Eva
-    /// </returns>
     private int Evaluate(Board board, int ply) {
         _totalLookups++;
 
 
-        // Check if this position has been evaluated before
-        if (_enableTranspositionTable &&
-            _transpositionTable.TryGetValue(board.ZobristKey, out int score)) {
-            _cacheHits++;
-            return score;
-        }
 
-        score = 0;
+        int score = 0;
 
         if (board.IsInCheckmate()) {
             score = EvaluateCheckmate(board, ply);
@@ -114,9 +58,6 @@ public class QuickMateBot : IChessBot {
             score = EvaluateBoard(board);
         }
 
-        if (_enableTranspositionTable) {
-            _transpositionTable[board.ZobristKey] = score;
-        }
 
         return score;
     }
@@ -148,6 +89,69 @@ public class QuickMateBot : IChessBot {
             _ => 0,
         };
     }
+    private void IdentifyBestMove(Board board, out Move bestMove, out int bestScore) {
+        var legalMoves = board.GetLegalMoves();
+        bestMove = Move.NullMove;
+        bestScore = MinScore;
+
+        const int evSign = 1; //assuming bot is maximizing
+
+        for (int depth = 1; (depth <= MaxDepth) && !_outOfTime; depth++) {
+            bestMove = Move.NullMove;
+            bestScore = MinScore;
+            MoveCounts.Clear();
+            NodeCount = 0;
+            foreach (var move in legalMoves) {
+                if (_stopwatch.ElapsedMilliseconds >= TimeToUse) {
+                    _outOfTime = true;
+                    bestMove = _bestPreviousMove;
+                    bestScore = _bestPreviousScore;
+                    break;
+                }
+                _localNodeCount = 0;
+
+                board.MakeMove(move);
+                int score = -Search(board, depth - 1, 1, MinScore, MaxScore, -evSign);
+                board.UndoMove(move);
+
+                if (!MoveCounts.ContainsKey(move)) {
+                    MoveCounts.Add(move, _localNodeCount);
+                    NodeCount += _localNodeCount;
+                }
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+
+                if (_printMoves) {
+                    string replace = move.ToString().Replace("\'", "").Replace("Move: ", "");
+                    Console.WriteLine($"Move: {replace}, Score: {score}");
+                }
+            }
+            Console.WriteLine(
+                    $"QuickMateBot:  Depth: {depth}, Time: {_stopwatch.ElapsedMilliseconds} ms, Score: {bestScore}, Best Move:{bestMove} Nodes: {NodeCount} NPS: {NodeCount / (_stopwatch.ElapsedMilliseconds / 1000.0):0.00}");
+
+            // for now only if depth is even
+
+
+            if (_outOfTime) {
+                break;
+            }
+
+            if (depth % 2 == 0){
+                _bestPreviousMove = bestMove;
+                _bestPreviousScore = bestScore;
+            }
+
+        }
+
+    }
+    private void InitializeThink(Board board) {
+        _stopwatch.Restart();
+        _outOfTime = false;
+        _isPlayerAWhite = board.IsWhiteToMove;
+    }
 
     private Move[] OrderMoves(IEnumerable<Move> moves, Board board) {
         var movesWithScore = moves.Select(move => new {move, score = ScoreMove(move, board)});
@@ -168,6 +172,12 @@ public class QuickMateBot : IChessBot {
         double percentageSaved = (double)_pruningCount / NodeCount * 100;
         Console.WriteLine($"Percentage saved: {percentageSaved:0.00}% of {NodeCount} nodes");
     }
+    private void PrintStatistics(int bestScore, Move bestMove) {
+        if (_enablePrintNodes) {
+            PrintNodes();
+        }
+
+    }
 
     private int ScoreMove(Move move, Board board) {
         board.MakeMove(move);
@@ -184,6 +194,7 @@ public class QuickMateBot : IChessBot {
             if (BitboardHelper.SquareIsSet(opponentPawnAttacks, move.TargetSquare)) {
                 score -= 50;
             }
+
         }
 
         if (moveIsCapture) {
@@ -201,7 +212,6 @@ public class QuickMateBot : IChessBot {
         if (isInCheckmate) {
             score += 100000;
         }
-
         board.UndoMove(move);
 
         return score;
@@ -218,18 +228,16 @@ public class QuickMateBot : IChessBot {
 
             return evSign * Evaluate(board, rootDepth);
         }
-
-
         int positionValue = -MaxScore;
-        var moves = board.GetLegalMoves();
+        var moves = board.GetLegalMoves().ToList();
 
 
         if (_enableMoveOrdering) {
-            moves = OrderMoves(moves, board);
+            moves = OrderMoves(moves, board).ToList();
         }
 
 
-        int moveCount = moves.Length;
+        int moveCount = moves.Count;
         int processedMoves = 0;
 
         foreach (var move in moves) {
